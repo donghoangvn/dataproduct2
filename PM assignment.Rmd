@@ -1,0 +1,108 @@
+---
+title: "Practical Machine Assignment"
+author: "Dong Dinh Hoang"
+date: "27 December 2015"
+output: html_document
+---
+# Summary
+This analysis is performed to fulfill the requirement of the course project in the course Practical Machine Learning on Coursera. It uses a part of Human Activity Recognition Datasets on http://groupware.les.inf.puc-rio.br/static/har/dataset-har-PUC-Rio-ugulino.zip
+The goal of this project is to predict the manner in which they did the exercise. In other words, it build the predictive model for the variable classe.
+
+# Setting up the enviroment and working directory
+
+```{r echo=TRUE}
+library(caret)
+library(randomForest)
+```
+
+You need to set the working directory by the command setwd("directory path"). Then download file to the working directory. This action assures your file run if you push your directory to github.
+
+# Loading the data
+
+```{r echo=TRUE}
+adata <- read.csv("pml-training.csv", header = TRUE, na.strings=c("NA",""))
+bdata <- read.csv("pml-testing.csv", header = TRUE, na.strings=c("NA",""))
+dim(adata)
+dim(bdata)
+```
+
+The training data set contains 19622 observations and 160 variables. The testing data set contains 20 observations.
+
+# Cleaning the data
+
+```{r echo=TRUE}
+sum(is.na(adata))
+columnNAa <- colSums(is.na(adata))
+delColumna <- columnNAa >0
+adata <- adata[,!delColumna]
+str(adata)
+adata <- adata[,c(8:60)]
+bdata <- bdata[,!delColumna]
+bdata <- bdata[,c(8:60)]
+```
+
+The variables including NA value are deleted. In addition, seven first insignificant variables are deleted, too. 
+
+The processed training data set contains 19622 observations and 53 variables. The processed testing data set contains 53 variables, too.
+
+# Partitioning training data set or creating two-fold data set
+
+```{r echo=TRUE}
+inTrain<- createDataPartition(adata$classe, p=0.5, list=FALSE)
+trainData <- adata[inTrain, ]
+testData <- adata[-inTrain, ]
+```
+
+The training data set is divided into two folds in order to do cross validation.
+
+# Building the model
+
+The random forest algorithm is used because the outcome variable is an nomimal variable. Moreover, the algorithm automatically selects important variables and is robust to correlated covariates & outliers. It also allow to use k-fold cross validation.
+
+```{r echo=TRUE}
+modRf <- train(classe ~ ., data=trainData, method="rf", trControl=trainControl(method="cv", 5), ntree=250)
+modRf
+```
+
+# Cross-validating the model
+
+```{r echo=TRUE}
+predictRf <- predict(modRf, testData)
+confusionMatrix(testData$classe, predictRf)
+```
+
+The estimated out-of-sample accuracy of the model is 0.9887
+
+The estimated out-of-sample error is about
+
+```{r echo=TRUE}
+1 - confusionMatrix(testData$classe, predictRf)$overall[4:3]
+```
+
+# Model Application
+
+In the step 2 of assignment, the model is used to predict the classe values of the testing data set. 
+
+```{r echo=TRUE}
+result <- predict(modRf, bdata)
+result
+```
+
+The collection of results is from
+
+```{r echo=TRUE, eval=FALSE}
+answers <- as.character(result)
+pml_write_files = function(x){
+  n = length(x)
+  for(i in 1:n){
+    filename = paste0("problem_id_",i,".txt")
+    write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
+  }
+}
+pml_write_files(answers)
+```
+
+# Conclusion
+
+Random Forest is used as the machine learning algorithm to build the model.
+The estimated out-of-sample accuracy of the model is 0.9887
